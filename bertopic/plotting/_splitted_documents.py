@@ -8,7 +8,7 @@ from typing import List, Union
 
 def visualize_splitted_documents(topic_model,
                                  docs: List[str],
-                                 splitted_docs: List[int],
+                                 original_doc_ref: List[int],
                                  hide_unassigned_snippets_from_assigned_docs: bool = True,
                                  topics: List[int] = None,
                                  embeddings: np.ndarray = None,
@@ -26,8 +26,8 @@ def visualize_splitted_documents(topic_model,
     Arguments:
         topic_model: A fitted BERTopic instance.
         docs: The documents you used when calling either `fit` or `fit_transform`
-        splitted_docs: A list indicating which docs comes from the same original document.
-                       That is, which docs should, within each topic, be merged to one doc.
+        original_doc_ref: A list indicating which docs comes from the same original document.
+                           That is, which docs should, within each topic, be merged to one doc.
         hide_unassigned_snippets_from_assigned_docs: Hide unassigned document snippets
             from original documents where other snippets have been assigned to one or
             more topics (alternatively these snippets will all be visualised individually
@@ -63,7 +63,7 @@ def visualize_splitted_documents(topic_model,
     To visualize the topics simply run:
 
     ```python
-    topic_model.visualize_splitted_documents(docs,splitted_docs)
+    topic_model.visualize_splitted_documents(docs,original_docs_ref)
     ```
 
     Do note that this re-calculates the embeddings and reduces them to 2D.
@@ -75,9 +75,20 @@ def visualize_splitted_documents(topic_model,
     from bertopic import BERTopic
     from umap import UMAP
 
+    # Split documents
+    raw_docs = fetch_20newsgroups(subset='all',  remove=('headers', 'footers', 'quotes'))['data']
+    sentence_model = SentenceTransformer("paraphrase-multilingual-MiniLM-L12-v2")
+    seq_len = sentence_model.max_seq_length - len(sentence_model.tokenizer.encode(''))
+    def doc_splitter(doc:str) -> List[str]:
+        encoded_sent = sentence_model.tokenizer.encode(doc,add_special_tokens=False)
+        return [sentence_model.tokenizer.decode(
+                encoded_sent[i*seq_len:(i+1)*seq_len]
+            ) for i in range(np.ceil(len(encoded_sent)/seq_len).astype(int))]
+    splitted_docs = pd.Series([doc_splitter(doc) for doc in docs]).explode()
+    original_docs_ref = splitted_docs.index
+    docs = list(splitted_docs)
+
     # Prepare embeddings
-    docs = fetch_20newsgroups(subset='all',  remove=('headers', 'footers', 'quotes'))['data']
-    sentence_model = SentenceTransformer("all-MiniLM-L6-v2")
     embeddings = sentence_model.encode(docs, show_progress_bar=False)
 
     # Train BERTopic
@@ -87,16 +98,16 @@ def visualize_splitted_documents(topic_model,
     # reduced_embeddings = UMAP(n_neighbors=10, n_components=2, min_dist=0.0, metric='cosine').fit_transform(embeddings)
 
     # Run the visualization with the original embeddings
-    topic_model.visualize_documents(docs, embeddings=embeddings)
+    topic_model.visualize_splitted_documents(docs, original_docs_ref, embeddings=embeddings)
 
     # Or, if you have reduced the original embeddings already:
-    topic_model.visualize_documents(docs, reduced_embeddings=reduced_embeddings)
+    topic_model.visualize_splitted_documents(docs, original_docs_ref, reduced_embeddings=reduced_embeddings)
     ```
 
     Or if you want to save the resulting figure:
 
     ```python
-    fig = topic_model.visualize_documents(docs, reduced_embeddings=reduced_embeddings)
+    fig = topic_model.visualize_splitted_documents(docs, original_docs_ref, reduced_embeddings=reduced_embeddings)
     fig.write_html("path/to/file.html")
     ```
 
@@ -108,13 +119,13 @@ def visualize_splitted_documents(topic_model,
     # Assuming many documents have been split to fit the token requirement of the sentence transformer, we want to
     # reduce the number of snippets representing the same original document within the same topic class, while allowing
     # a document to contain multiple topics
-    _, split_groups = np.unique(list(zip(topic_per_doc, splitted_docs)), axis=0, return_inverse=True)
+    _, split_groups = np.unique(list(zip(topic_per_doc, original_doc_ref)), axis=0, return_inverse=True)
 
     df_full = pd.DataFrame(
         {
             "topic": np.array(topic_per_doc),
             "doc": docs,
-            "orig_doc": splitted_docs,
+            "orig_doc": original_doc_ref,
             "split_group": split_groups
         }
     )

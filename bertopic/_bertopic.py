@@ -2293,6 +2293,131 @@ class BERTopic:
                                             width=width,
                                             height=height)
 
+    def visualize_splitted_documents(self,
+                                     docs: List[str],
+                                     orignal_doc_ref: List[int],
+                                     hide_unassigned_snippets_from_assigned_docs: bool = True,
+                                     topics: List[int] = None,
+                                     embeddings: np.ndarray = None,
+                                     reduced_embeddings: np.ndarray = None,
+                                     sample: float = None,
+                                     hide_annotations: bool = False,
+                                     hide_document_hover: bool = False,
+                                     custom_labels: bool = False,
+                                     title: str = "<b>Documents and Topics</b>",
+                                     doc_string_joiner: str = 'first',
+                                     width: int = 1200,
+                                     height: int = 750) -> go.Figure:
+        """ Visualize documents and their topics in 2D
+
+        Arguments:
+            topic_model: A fitted BERTopic instance.
+            docs: The documents you used when calling either `fit` or `fit_transform`
+            original_doc_ref: A list indicating which docs comes from the same original document.
+                               That is, which docs should, within each topic, be merged to one doc.
+            hide_unassigned_snippets_from_assigned_docs: Hide unassigned document snippets
+                from original documents where other snippets have been assigned to one or
+                more topics (alternatively these snippets will all be visualised individually
+                instead of being merged)
+            topics: A selection of topics to visualize.
+                    Not to be confused with the topics that you get from `.fit_transform`.
+                    For example, if you want to visualize only topics 1 through 5:
+                    `topics = [1, 2, 3, 4, 5]`.
+            embeddings: The embeddings of all documents in `docs`.
+            reduced_embeddings: The 2D reduced embeddings of all documents in `docs`.
+            sample: The percentage of documents in each topic that you would like to keep.
+                    Value can be between 0 and 1. Setting this value to, for example,
+                    0.1 (10% of documents in each topic) makes it easier to visualize
+                    millions of documents as a subset is chosen.
+            hide_annotations: Hide the names of the traces on top of each cluster.
+            hide_document_hover: Hide the content of the documents when hovering over
+                                 specific points. Helps to speed up generation of visualization.
+            custom_labels: If bool, whether to use custom topic labels that were defined using
+                           `topic_model.set_topic_labels`.
+                           If `str`, it uses labels from other aspects, e.g., "Aspect1".
+            title: Title of the plot.
+            doc_string_joiner: string that the docs are joined upon with the reduced embedding
+                               coordinates are averaged, eg. ' /--/ '. In case the embeddings
+                               are provided seperately and docs are used to set a hover text, then
+                               the special str 'first' (default) can be used to indicate that only
+                               the first doc entry for a group of docs assigned to the same topic
+                               from the same original document, should be used.
+            width: The width of the figure.
+            height: The height of the figure.
+
+        Examples:
+
+        To visualize the topics simply run:
+
+        ```python
+        topic_model.visualize_splitted_documents(docs,original_docs_ref)
+        ```
+
+        Do note that this re-calculates the embeddings and reduces them to 2D.
+        The advised and prefered pipeline for using this function is as follows:
+
+        ```python
+        from sklearn.datasets import fetch_20newsgroups
+        from sentence_transformers import SentenceTransformer
+        from bertopic import BERTopic
+        from umap import UMAP
+
+        # Split documents
+        raw_docs = fetch_20newsgroups(subset='all',  remove=('headers', 'footers', 'quotes'))['data']
+        sentence_model = SentenceTransformer("paraphrase-multilingual-MiniLM-L12-v2")
+        seq_len = sentence_model.max_seq_length - len(sentence_model.tokenizer.encode(''))
+        def doc_splitter(doc:str) -> List[str]:
+            encoded_sent = sentence_model.tokenizer.encode(doc,add_special_tokens=False)
+            return [sentence_model.tokenizer.decode(
+                    encoded_sent[i*seq_len:(i+1)*seq_len]
+                ) for i in range(np.ceil(len(encoded_sent)/seq_len).astype(int))]
+        splitted_docs = pd.Series([doc_splitter(doc) for doc in docs]).explode()
+        original_docs_ref = splitted_docs.index
+        docs = list(splitted_docs)
+
+        # Prepare embeddings
+        embeddings = sentence_model.encode(docs, show_progress_bar=False)
+
+        # Train BERTopic
+        topic_model = BERTopic().fit(docs, embeddings)
+
+        # Reduce dimensionality of embeddings, this step is optional
+        # reduced_embeddings = UMAP(n_neighbors=10, n_components=2, min_dist=0.0, metric='cosine').fit_transform(embeddings)
+
+        # Run the visualization with the original embeddings
+        topic_model.visualize_splitted_documents(docs, original_docs_ref, embeddings=embeddings)
+
+        # Or, if you have reduced the original embeddings already:
+        topic_model.visualize_splitted_documents(docs, original_docs_ref, reduced_embeddings=reduced_embeddings)
+        ```
+
+        Or if you want to save the resulting figure:
+
+        ```python
+        fig = topic_model.visualize_splitted_documents(docs, original_docs_ref, reduced_embeddings=reduced_embeddings)
+        fig.write_html("path/to/file.html")
+        ```
+
+        <iframe src="../../getting_started/visualization/documents.html"
+        style="width:1000px; height: 800px; border: 0px;""></iframe>
+        """
+        check_is_fitted(self)
+        return plotting.visualize_splitted_documents(self,
+                                                     docs=docs,
+                                                     orignal_doc_ref=orignal_doc_ref,
+                                                     hide_unassigned_snippets_from_assigned_docs=hide_unassigned_snippets_from_assigned_docs,
+                                                     topics=topics,
+                                                     embeddings=embeddings,
+                                                     reduced_embeddings=reduced_embeddings,
+                                                     sample=sample,
+                                                     hide_annotations=hide_annotations,
+                                                     hide_document_hover=hide_document_hover,
+                                                     custom_labels=custom_labels,
+                                                     title=title,
+                                                     doc_string_joiner=doc_string_joiner,
+                                                     width=width,
+                                                     height=height)
+
     def visualize_hierarchical_documents(self,
                                          docs: List[str],
                                          hierarchical_topics: pd.DataFrame,
