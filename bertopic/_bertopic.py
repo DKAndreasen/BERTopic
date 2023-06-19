@@ -2295,7 +2295,7 @@ class BERTopic:
 
     def visualize_splitted_documents(self,
                                      docs: List[str],
-                                     orignal_doc_ref: List[int],
+                                     original_doc_ref: List[int],
                                      hide_unassigned_snippets_from_assigned_docs: bool = True,
                                      topics: List[int] = None,
                                      embeddings: np.ndarray = None,
@@ -2404,7 +2404,7 @@ class BERTopic:
         check_is_fitted(self)
         return plotting.visualize_splitted_documents(self,
                                                      docs=docs,
-                                                     orignal_doc_ref=orignal_doc_ref,
+                                                     original_doc_ref=original_doc_ref,
                                                      hide_unassigned_snippets_from_assigned_docs=hide_unassigned_snippets_from_assigned_docs,
                                                      topics=topics,
                                                      embeddings=embeddings,
