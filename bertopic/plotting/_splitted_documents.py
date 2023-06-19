@@ -151,7 +151,7 @@ def visualize_splitted_documents(topic_model,
         lambda topic_df: topic_df.drop_duplicates(
             subset=['split_group']
         ).sample(
-            n=int(len(topic_df)*sample),
+            n=int(len(topic_df.drop_duplicates(subset=['split_group']))*sample),
             replace=False
         ) if len(topic_df.drop_duplicates(subset=['split_group'])) >= 100 else topic_df
     )
@@ -237,7 +237,7 @@ def visualize_splitted_documents(topic_model,
 
     selection = df.loc[df.topic.isin(non_selected_topics), :]
     selection["text"] = ""
-    selection.loc[len(selection), :] = [None, None, selection.x.mean(), selection.y.mean(), "Other documents"]
+    selection.loc[len(selection), :] = [None, None, None, selection.x.mean(), selection.y.mean(), "Other documents"]
 
     fig.add_trace(
         go.Scattergl(
@@ -259,7 +259,7 @@ def visualize_splitted_documents(topic_model,
             selection["text"] = ""
 
             if not hide_annotations:
-                selection.loc[len(selection), :] = [None, None, selection.x.mean(), selection.y.mean(), name]
+                selection.loc[len(selection), :] = [None, None, None, selection.x.mean(), selection.y.mean(), name]
 
             fig.add_trace(
                 go.Scattergl(
